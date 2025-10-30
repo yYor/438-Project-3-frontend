@@ -3,6 +3,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { router } from 'expo-router';
 import { Platform, ScrollView, StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -96,7 +97,7 @@ export default function HomeScreen() {
               label="Add Sighting"
               icon="plus.circle.fill"
               iconColor="#4CAF50"
-              onPress={() => console.log('Add sighting')}
+              onPress={() => router.push('/add-sighting')}
             />
             <ActionButton
               label="View Map"
