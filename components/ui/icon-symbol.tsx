@@ -26,20 +26,9 @@ const MAPPING = {
   'eye.fill': 'visibility',
   'leaf.fill': 'park',
   'calendar': 'event',
-  'flame.fill': 'local-fire-department',
-  // additional quick actions
-  'camera.fill': 'photo-camera',
-  'mic.fill': 'mic',
-  'mappin.and.ellipse': 'place',
-  'book.fill': 'menu-book',
-  'line.3.horizontal.decrease.circle': 'tune',
-  'square.and.arrow.up': 'share',
-  'bell.badge.fill': 'notifications-active',
-  'globe.americas.fill': 'public',
-  'questionmark.circle.fill': 'help',
-  'list.bullet.rectangle.fill': 'list-alt',
-  'suitcase.fill': 'luggage',
-  'scope': 'my-location',
+  'clock.fill': 'schedule',
+  'flame.fill': 'local-fire-department'
+  
 } as IconMapping;
 
 /**
