@@ -67,7 +67,7 @@ export default function HomeScreen() {
           <StatCard
             label="Species"
             value={stats.speciesCount}
-            icon="leaf.fill"
+            icon="bird.fill"
             iconColor={tintColor}
           />
         </View>
@@ -100,22 +100,22 @@ export default function HomeScreen() {
               onPress={() => router.push('/add-sighting')}
             />
             <ActionButton
-              label="View Map"
-              icon="map.fill"
-              iconColor="#2196F3"
-              onPress={() => console.log('View map')}
-            />
-            <ActionButton
               label="My List"
               icon="list.bullet"
               iconColor="#FF9800"
-              onPress={() => console.log('My list')}
+              onPress={() => router.push('/list')}
             />
             <ActionButton
-              label="Explore"
-              icon="magnifyingglass.circle.fill"
+              label="Species"
+              icon="bird.fill"
+              iconColor="#4CAF50"
+              onPress={() => router.push('/species')}
+            />
+            <ActionButton
+              label="Stats"
+              icon="chart.bar.fill"
               iconColor="#9C27B0"
-              onPress={() => console.log('Explore')}
+              onPress={() => router.push('/stats')}
             />
           </View>
         </View>
@@ -126,7 +126,7 @@ export default function HomeScreen() {
             <ThemedText type="subtitle" style={styles.sectionTitle}>
               Recent Sightings
             </ThemedText>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/list')}>
               <ThemedText type="link" style={styles.seeAll}>
                 See All
               </ThemedText>
