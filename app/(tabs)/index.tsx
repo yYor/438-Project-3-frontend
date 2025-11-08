@@ -148,7 +148,7 @@ export default function HomeScreen() {
                 Log your first sighting of the day!
               </ThemedText>
             </View>
-            <TouchableOpacity style={[styles.goalButton, { backgroundColor: tintColor }]}>
+            <TouchableOpacity onPress={() => router.push('/add-sighting')} style={[styles.goalButton, { backgroundColor: tintColor }]}>
               <ThemedText style={styles.goalButtonText}>Get Started</ThemedText>
             </TouchableOpacity>
           </View>
