@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { router, Stack } from 'expo-router';
+import React, { useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -14,6 +14,7 @@ export default function SpeciesScreen() {
   const insets = useSafeAreaInsets();
   const iconColor = theme === 'light' ? Colors.light.icon : Colors.dark.icon;
 
+  // fake data to test the species screen
   const allSpecies = [
     'Northern Cardinal', 'Blue Jay', 'American Robin', 'Mourning Dove', 'House Sparrow',
     'Red-winged Blackbird', 'Common Grackle', 'European Starling', 'American Goldfinch', 'House Finch',

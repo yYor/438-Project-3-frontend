@@ -39,11 +39,20 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow BirdWatcher to use your location to show nearby bird sightings."
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "apiUrl": "https://birdwatcher-backend.herokuapp.com/api" 
     }
   }
 }
