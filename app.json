@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "438project3frontend",
+    "deepLinks": ["oauth2redirect"],
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -52,7 +53,7 @@
       "reactCompiler": true
     },
     "extra": {
-      "apiUrl": "https://birdwatcher-backend.herokuapp.com/api" 
+      "apiUrl": "https://localhost:8080/api" 
     }
   }
 }
