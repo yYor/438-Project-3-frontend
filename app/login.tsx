@@ -6,6 +6,8 @@ import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
+import * as Linking from "expo-linking";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   ActivityIndicator,
   Alert,
@@ -37,6 +39,31 @@ export default function LoginScreen() {
       router.replace('/(tabs)');
     }
   }, [user, authLoading]);
+
+  useEffect(() => {
+    const subscription = Linking.addEventListener("url", async (event) => {
+      const url = event.url;
+
+      const parsed = Linking.parse(url);
+      const token = parsed?.queryParams?.token;
+
+      if (token) {
+        // Save token for later API calls
+        await AsyncStorage.setItem("authToken", token);
+
+        // Redirect user into the app
+        router.replace("/(tabs)");
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
+
+  const BACKEND = "https://birdwatchers-c872a1ce9f02.herokuapp.com";
+
+  const loginWithGoogle = () => {
+    Linking.openURL(`${BACKEND}/oauth2/authorization/google?mobile=true`);
+  };
 
   const handleSubmit = async () => {
     if (!email || !password) {
@@ -188,6 +215,16 @@ export default function LoginScreen() {
               </View>
             </View>
 
+          <TouchableOpacity
+              style={[styles.submitButton, { backgroundColor: "#DB4437", marginTop: 12 }]}
+              onPress={loginWithGoogle}
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              <ThemedText style={styles.submitButtonText}>
+                Sign in with Google
+              </ThemedText>
+            </TouchableOpacity> 
             {/* Submit Button */}
             <TouchableOpacity
               style={[styles.submitButton, { backgroundColor: tintColor }]}
@@ -195,6 +232,7 @@ export default function LoginScreen() {
               disabled={loading}
               activeOpacity={0.8}
             >
+            
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
