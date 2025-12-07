@@ -27,7 +27,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp, user, loading: authLoading } = useAuth();
+  const { signIn, signUp, user, loading: authLoading, signInWithOAuth } = useAuth();
   const theme = useColorScheme() ?? 'light';
   const insets = useSafeAreaInsets();
   const tintColor = theme === 'light' ? Colors.light.tint : Colors.dark.tint;
@@ -41,23 +41,56 @@ export default function LoginScreen() {
   }, [user, authLoading]);
 
   useEffect(() => {
-    const subscription = Linking.addEventListener("url", async (event) => {
-      const url = event.url;
+  const handleDeepLink = async (url: string | null) => {
+    if (!url) return;
 
-      const parsed = Linking.parse(url);
-      const token = parsed?.queryParams?.token;
+    const parsed = Linking.parse(url);
+    const params = parsed?.queryParams ?? {};
 
+    const userId  = params.userId as string | undefined;
+    const email   = params.email as string | undefined;
+    const name    = params.name as string | undefined;
+    const picture = params.picture as string | undefined;
+    const token   = params.token as string | undefined; // optional: if you add it later
+
+    // We only proceed if we at least have an id + email
+    if (userId && email) {
+      // Optional: store token if you decide to use a real JWT later
       if (token) {
-        // Save token for later API calls
-        await AsyncStorage.setItem("authToken", token);
-
-        // Redirect user into the app
-        router.replace("/(tabs)");
+        await AsyncStorage.setItem('authToken', token);
       }
-    });
 
-    return () => subscription.remove();
-  }, []);
+      const oauthUser = {
+        id: String(userId),
+        email,
+        created_at: new Date().toISOString(),
+        name,
+        profilePicture: picture,
+        oauthProvider: 'google',
+      };
+
+      await signInWithOAuth(oauthUser as any);
+
+      // Go to tabs – also your other effect (if !authLoading && user) will kick in
+      router.replace('/(tabs)');
+    }
+  };
+
+  // 1) App opened from a deep link (cold start)
+  (async () => {
+    const initialUrl = await Linking.getInitialURL();
+    await handleDeepLink(initialUrl);
+  })();
+
+  // 2) Deep link received while app is already running
+  const subscription = Linking.addEventListener('url', async (event) => {
+    await handleDeepLink(event.url);
+  });
+
+  return () => {
+    subscription.remove();
+  };
+}, [signInWithOAuth]);
 
   const BACKEND = "https://birdwatchers-c872a1ce9f02.herokuapp.com";
 
