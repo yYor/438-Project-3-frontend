@@ -95,7 +95,7 @@ export default function LoginScreen() {
   const BACKEND = "https://birdwatchers-c872a1ce9f02.herokuapp.com";
 
   const loginWithGoogle = () => {
-    Linking.openURL(`${BACKEND}/oauth2/authorization/google?mobile=true`);
+    Linking.openURL(`${BACKEND}/oauth2/authorization/google?mobile`);
   };
 
   const handleSubmit = async () => {

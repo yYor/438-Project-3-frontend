@@ -1,10 +1,14 @@
 export interface User {
-  id: string;                   // local/mobile user ID (for now)
+  userId: number;          // DB primary key
   email: string;
-  created_at: string;
-
-  // Optional fields for OAuth
   name?: string;
   profilePicture?: string;
   oauthProvider?: string;
+  oauthId?: string;
+  role?: string;
+  createdAt?: string;
+
+  // Optional legacy fields if other code still uses them:
+  id?: string;             // can mirror userId as a string if you want
+  created_at?: string;     // old snake_case version
 }
