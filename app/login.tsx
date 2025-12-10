@@ -40,62 +40,61 @@ export default function LoginScreen() {
     }
   }, [user, authLoading]);
 
-  useEffect(() => {
-  const handleDeepLink = async (url: string | null) => {
-    if (!url) return;
+   useEffect(() => {
+    const handleDeepLink = async (url: string | null) => {
+      if (!url) return;
 
-    const parsed = Linking.parse(url);
-    const params = parsed?.queryParams ?? {};
+      const parsed = Linking.parse(url);
+      const params = parsed?.queryParams ?? {};
 
-    const userId  = params.userId as string | undefined;
-    const email   = params.email as string | undefined;
-    const name    = params.name as string | undefined;
-    const picture = params.picture as string | undefined;
-    const token   = params.token as string | undefined; // optional: if you add it later
+      const userId  = params.userId as string | undefined;
+      const email   = params.email as string | undefined;
+      const name    = params.name as string | undefined;
+      const picture = params.picture as string | undefined;
+      const token   = params.token as string | undefined; // optional: if you add it later
+      const provider = (params.provider as string | undefined) ?? 'google';
 
-    // We only proceed if we at least have an id + email
-    if (userId && email) {
-      // Optional: store token if you decide to use a real JWT later
-      if (token) {
-        await AsyncStorage.setItem('authToken', token);
+      if (userId && email) {
+        if (token) {
+          await AsyncStorage.setItem('authToken', token);
+        }
+
+        const oauthUser = {
+          id: String(userId),
+          email,
+          created_at: new Date().toISOString(),
+          name,
+          profilePicture: picture,
+          oauthProvider: provider, // <- now google OR github
+        };
+
+        await signInWithOAuth(oauthUser as any);
+        router.replace('/(tabs)');
       }
+    };
 
-      const oauthUser = {
-        id: String(userId),
-        email,
-        created_at: new Date().toISOString(),
-        name,
-        profilePicture: picture,
-        oauthProvider: 'google',
-      };
+    (async () => {
+      const initialUrl = await Linking.getInitialURL();
+      await handleDeepLink(initialUrl);
+    })();
 
-      await signInWithOAuth(oauthUser as any);
+    const subscription = Linking.addEventListener('url', async (event) => {
+      await handleDeepLink(event.url);
+    });
 
-      // Go to tabs – also your other effect (if !authLoading && user) will kick in
-      router.replace('/(tabs)');
-    }
-  };
-
-  // 1) App opened from a deep link (cold start)
-  (async () => {
-    const initialUrl = await Linking.getInitialURL();
-    await handleDeepLink(initialUrl);
-  })();
-
-  // 2) Deep link received while app is already running
-  const subscription = Linking.addEventListener('url', async (event) => {
-    await handleDeepLink(event.url);
-  });
-
-  return () => {
-    subscription.remove();
-  };
-}, [signInWithOAuth]);
+    return () => {
+      subscription.remove();
+    };
+  }, [signInWithOAuth]);
 
   const BACKEND = "https://birdwatchers-c872a1ce9f02.herokuapp.com";
 
   const loginWithGoogle = () => {
-    Linking.openURL(`${BACKEND}/oauth2/authorization/google?mobile`);
+    Linking.openURL(`${BACKEND}/oauth2/authorization/google`);
+  };
+  
+  const loginWithGithub = () => {
+    Linking.openURL(`${BACKEND}/oauth2/authorization/github`);
   };
 
   const handleSubmit = async () => {
@@ -248,16 +247,6 @@ export default function LoginScreen() {
               </View>
             </View>
 
-          <TouchableOpacity
-              style={[styles.submitButton, { backgroundColor: "#DB4437", marginTop: 12 }]}
-              onPress={loginWithGoogle}
-              disabled={loading}
-              activeOpacity={0.8}
-            >
-              <ThemedText style={styles.submitButtonText}>
-                Sign in with Google
-              </ThemedText>
-            </TouchableOpacity> 
             {/* Submit Button */}
             <TouchableOpacity
               style={[styles.submitButton, { backgroundColor: tintColor }]}
@@ -274,6 +263,28 @@ export default function LoginScreen() {
                 </ThemedText>
               )}
             </TouchableOpacity>
+
+          <TouchableOpacity
+              style={[styles.submitButton, { backgroundColor: "#DB4437", marginTop: 12 }]}
+              onPress={loginWithGoogle}
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              <ThemedText style={styles.submitButtonText}>
+                Sign in with Google
+              </ThemedText>
+            </TouchableOpacity> 
+          {/* GitHub OAuth button */}
+          <TouchableOpacity
+            style={[styles.submitButton, { backgroundColor: "#359c27ff", marginTop: 8 }]}
+            onPress={loginWithGithub}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            <ThemedText style={styles.submitButtonText}>
+              Sign in with GitHub
+            </ThemedText>
+          </TouchableOpacity>
 
             {/* Toggle Sign Up/Sign In */}
             <View style={styles.toggleContainer}>
