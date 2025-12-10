@@ -4,43 +4,131 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { router } from 'expo-router';
-import { Platform, ScrollView, StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import {Platform,ScrollView,StatusBar,StyleSheet,TouchableOpacity,View,ActivityIndicator} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { formatTimeAgo } from '@/utils/sighting';
+import type { ApiSightingResponse } from '@/types/ApiSightingResponse'; // ⬅️ adjust path if different
+import { useFocusEffect } from '@react-navigation/native';
+
+const API_BASE_URL = 'https://birdwatchers-c872a1ce9f02.herokuapp.com';
+
+type RecentSighting = {
+  id: number;
+  name: string;
+  location: string;
+  date: string;
+  username: string | null;
+};
 
 export default function HomeScreen() {
   const theme = useColorScheme() ?? 'light';
   const insets = useSafeAreaInsets();
   const iconColor = theme === 'light' ? Colors.light.icon : Colors.dark.icon;
   const tintColor = theme === 'light' ? Colors.light.tint : Colors.dark.tint;
-  
-  // Get status bar height for Android
-  const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 24 : insets.top;
 
-  // Mock data 
-  const stats = {
-    totalSightings: 342,
-    speciesCount: 96,
-    thisMonth: 41,
-    thisWeek: 12,
-  };
-  
-  const recentSightings = [
-    { id: 101, name: 'Black Oystercatcher', location: 'Point Pinos, Pacific Grove', date: '1 hour ago' },
-    { id: 102, name: 'Brandt’s Cormorant', location: 'Asilomar State Beach', date: '3 hours ago' },
-    { id: 103, name: 'Brown Pelican', location: 'Lovers Point Cove', date: 'Yesterday' },
-    { id: 104, name: 'Heermann’s Gull', location: 'Cannery Row shoreline', date: '2 days ago' },
-    { id: 105, name: 'Snowy Egret', location: 'Carmel River Lagoon', date: '3 days ago' },
-  ];
+  const statusBarHeight =
+    Platform.OS === 'android' ? StatusBar.currentHeight || 24 : insets.top;
+
+  const [stats, setStats] = useState({
+    totalSightings: 0, // number of records
+    speciesCount: 0,   // unique birdName
+    thisMonth: 0,
+    thisWeek: 0,
+  });
+
+  const [recentSightings, setRecentSightings] = useState<RecentSighting[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      const fetchSightings = async () => {
+        try {
+          setLoading(true);
+          setError(null);
+
+          const res = await fetch(`${API_BASE_URL}/api/sightings`, {
+            headers: {
+              Accept: 'application/json',
+            },
+          });
+
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+
+          const data: ApiSightingResponse[] = await res.json();
+
+          // ----- Stats -----
+          const totalSightings = data.length;
+
+          const speciesSet = new Set(
+            data.map((s) => s.birdName).filter(Boolean)
+          );
+          const speciesCount = speciesSet.size;
+
+          const now = new Date().getTime();
+
+          const thisMonth = data.filter((s) => {
+            const d = new Date(s.observedAt);
+            const nowD = new Date();
+            return (
+              d.getFullYear() === nowD.getFullYear() &&
+              d.getMonth() === nowD.getMonth()
+            );
+          }).length;
+
+          const thisWeek = data.filter((s) => {
+            const diff =
+              (now - new Date(s.observedAt).getTime()) /
+              (1000 * 60 * 60 * 24);
+            return diff <= 7;
+          }).length;
+
+          setStats({ totalSightings, speciesCount, thisMonth, thisWeek });
+
+          // Recent sightings
+          const recent = [...data]
+            .sort(
+              (a, b) =>
+                new Date(b.observedAt).getTime() -
+                new Date(a.observedAt).getTime()
+            )
+            .slice(0, 5)
+            .map((s) => ({
+              id: s.id,
+              name: s.birdName,
+              location: s.location,
+              date: formatTimeAgo(s.observedAt),
+              username: s.username,
+            }));
+
+          setRecentSightings(recent);
+        } catch (err: any) {
+          console.error('Failed to load sightings', err);
+          setError('Could not load sightings from the server.');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchSightings();
+
+      // OPTIONAL CLEANUP
+      return () => {};
+    }, [])
+  );
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Top Spacer for Status Bar */}
         <View style={{ height: statusBarHeight + 32 }} />
+
         {/* Header */}
         <View style={styles.header}>
           <View>
@@ -132,24 +220,56 @@ export default function HomeScreen() {
               </ThemedText>
             </TouchableOpacity>
           </View>
-          {recentSightings.map((sighting) => (
-            <SightingCard key={sighting.id} sighting={sighting} />
-          ))}
+
+          {loading && (
+            <View style={{ paddingVertical: 16, alignItems: 'center' }}>
+              <ActivityIndicator />
+              <ThemedText style={{ marginTop: 8 }}>
+                Loading sightings…
+              </ThemedText>
+            </View>
+          )}
+
+          {error && !loading && (
+            <ThemedText style={{ color: 'red', marginBottom: 8 }}>
+              {error}
+            </ThemedText>
+          )}
+
+          {!loading &&
+            !error &&
+            recentSightings.map((sighting) => (
+              <SightingCard key={sighting.id} sighting={sighting} />
+            ))}
+
+          {!loading && !error && recentSightings.length === 0 && (
+            <ThemedText>
+              No sightings yet. Add your first one!
+            </ThemedText>
+          )}
         </View>
 
         {/* Today's Goal */}
         <View style={styles.goalCard}>
           <View style={styles.goalContent}>
             <View>
-              <ThemedText type="defaultSemiBold" style={styles.goalTitle}>
-                Today's Goal
+              <ThemedText
+                type="defaultSemiBold"
+                style={styles.goalTitle}
+              >
+                Today&apos;s Goal
               </ThemedText>
               <ThemedText style={styles.goalText}>
                 Log your first sighting of the day!
               </ThemedText>
             </View>
-            <TouchableOpacity onPress={() => router.push('/add-sighting')} style={[styles.goalButton, { backgroundColor: tintColor }]}>
-              <ThemedText style={styles.goalButtonText}>Get Started</ThemedText>
+            <TouchableOpacity
+              onPress={() => router.push('/add-sighting')}
+              style={[styles.goalButton, { backgroundColor: tintColor }]}
+            >
+              <ThemedText style={styles.goalButtonText}>
+                Get Started
+              </ThemedText>
             </TouchableOpacity>
           </View>
         </View>
@@ -159,15 +279,15 @@ export default function HomeScreen() {
 }
 
 // Stat Card Component
-function StatCard({ 
-  label, 
-  value, 
-  icon, 
-  iconColor 
-}: { 
-  label: string; 
-  value: string | number; 
-  icon: string; 
+function StatCard({
+  label,
+  value,
+  icon,
+  iconColor,
+}: {
+  label: string;
+  value: string | number;
+  icon: string;
   iconColor: string;
 }) {
   const theme = useColorScheme() ?? 'light';
@@ -179,7 +299,10 @@ function StatCard({
       <View style={styles.statContent}>
         <IconSymbol name={icon as any} size={20} color={iconColor} />
         <View style={styles.statText}>
-          <ThemedText type="defaultSemiBold" style={[styles.statValue, { color: textColor }]}>
+          <ThemedText
+            type="defaultSemiBold"
+            style={[styles.statValue, { color: textColor }]}
+          >
             {value}
           </ThemedText>
           <ThemedText style={styles.statLabel}>{label}</ThemedText>
@@ -190,15 +313,15 @@ function StatCard({
 }
 
 // Action Button Component
-function ActionButton({ 
-  label, 
-  icon, 
-  iconColor, 
-  onPress 
-}: { 
-  label: string; 
-  icon: string; 
-  iconColor: string; 
+function ActionButton({
+  label,
+  icon,
+  iconColor,
+  onPress,
+}: {
+  label: string;
+  icon: string;
+  iconColor: string;
   onPress: () => void;
 }) {
   const theme = useColorScheme() ?? 'light';
@@ -217,7 +340,17 @@ function ActionButton({
 }
 
 // Sighting Card Component
-function SightingCard({ sighting }: { sighting: { id: number; name: string; location: string; date: string } }) {
+function SightingCard({
+  sighting,
+}: {
+  sighting: {
+    id: number;
+    name: string;
+    location: string;
+    date: string;
+    username: string | null;
+  };
+}) {
   const theme = useColorScheme() ?? 'light';
   const cardBg = theme === 'light' ? '#F8F9FA' : '#1E1E1E';
   const iconColor = theme === 'light' ? Colors.light.icon : Colors.dark.icon;
@@ -236,6 +369,10 @@ function SightingCard({ sighting }: { sighting: { id: number; name: string; loca
         </ThemedText>
         <ThemedText style={styles.sightingLocation}>
           {sighting.location}
+        </ThemedText>
+        {/* show user so it’s clearly from various users */}
+        <ThemedText style={styles.sightingDate}>
+          {sighting.username ? `by ${sighting.username}` : 'by Anonymous'}
         </ThemedText>
         <ThemedText style={styles.sightingDate}>
           {sighting.date}

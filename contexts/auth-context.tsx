@@ -1,11 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { User } from '../types/User';
 
-interface User {
-  email: string;
-  id: string;
-  created_at: string;
-}
 
 interface AuthContextType {
   user: User | null;
@@ -13,6 +9,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  signInWithOAuth: (user: User) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -68,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         id: `user_${Date.now()}`,
         created_at: new Date().toISOString(),
-      };3
+      };
       
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
       setUser(newUser);
@@ -88,6 +85,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const signInWithOAuth = async (oauthUser: User) => {
+    try {
+      // persist user just like signUp does
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(oauthUser));
+      setUser(oauthUser);
+    } catch (error) {
+      console.error('Error saving OAuth user:', error);
+    }
+  };
+
   // value to pass to the auth context provider
   const value = {
     user,
@@ -95,6 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signUp,
     signOut,
+    signInWithOAuth,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

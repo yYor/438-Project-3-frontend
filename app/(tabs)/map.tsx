@@ -6,110 +6,13 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { Sighting } from '@/utils/sighting';
 import { formatTimeAgo, getMarkerColor } from '@/utils/sighting';
-import { useCallback, useMemo, useState } from 'react';
-import { FlatList, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { useCallback, useMemo, useState, useEffect } from 'react';
+import { FlatList, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ApiSightingResponse } from '@/types/ApiSightingResponse';
+import { useFocusEffect } from '@react-navigation/native';
 
-// fake data to test the map screen
-
-const MOCK_SIGHTINGS: Sighting[] = [
-  {
-    id: 1,
-    species: 'Black Oystercatcher',
-    count: 3,
-    location: 'Pacific Grove, California',
-    latitude: 36.6372,
-    longitude: -121.9356,
-    notes: 'Spotted near the lighthouse, feeding along the rocky shore',
-    date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-    userId: 1,
-    username: 'birdwatcher123',
-  },
-  {
-    id: 2,
-    species: "Brandt's Cormorant",
-    count: 12,
-    location: 'Pacific Grove, California',
-    latitude: 36.6181,
-    longitude: -121.9414,
-    notes: 'Large group diving for fish',
-    date: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), // 5 hours ago
-    userId: 2,
-    username: 'coastal_birder',
-  },
-  {
-    id: 3,
-    species: 'Brown Pelican',
-    count: 5,
-    location: 'Pacific Grove, California',
-    latitude: 36.6256,
-    longitude: -121.9181,
-    notes: 'Flying in formation along the coast',
-    date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-    userId: 3,
-    username: 'pelican_watcher',
-  },
-  {
-    id: 4,
-    species: "Heermann's Gull",
-    count: 8,
-    location: 'Monterey, California',
-    latitude: 36.6177,
-    longitude: -121.9017,
-    notes: 'Mixed with other gulls near the pier',
-    date: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(), // 2 days ago
-    userId: 1,
-    username: 'birdwatcher123',
-  },
-  {
-    id: 5,
-    species: 'Snowy Egret',
-    count: 2,
-    location: 'Carmel, California',
-    latitude: 36.5414,
-    longitude: -121.9250,
-    notes: 'Wading in shallow water, very active',
-    date: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(), // 3 days ago
-    userId: 4,
-    username: 'egret_enthusiast',
-  },
-  {
-    id: 6,
-    species: 'Great Blue Heron',
-    count: 1,
-    location: 'Moss Landing, California',
-    latitude: 36.8097,
-    longitude: -121.7406,
-    notes: 'Standing motionless, hunting',
-    date: new Date(Date.now() - 96 * 60 * 60 * 1000).toISOString(), // 4 days ago
-    userId: 2,
-    username: 'coastal_birder',
-  },
-  {
-    id: 7,
-    species: 'California Quail',
-    count: 6,
-    location: 'Carmel Valley, California',
-    latitude: 36.5211,
-    longitude: -121.7514,
-    notes: 'Family group in the brush',
-    date: new Date(Date.now() - 120 * 60 * 60 * 1000).toISOString(), // 5 days ago
-    userId: 5,
-    username: 'park_birder',
-  },
-  {
-    id: 8,
-    species: 'Anna\'s Hummingbird',
-    count: 3,
-    location: 'Monterey, California',
-    latitude: 36.6002,
-    longitude: -121.8947,
-    notes: 'Feeding on native flowers',
-    date: new Date(Date.now() - 168 * 60 * 60 * 1000).toISOString(), // 7 days ago
-    userId: 3,
-    username: 'pelican_watcher',
-  },
-];
+const API_BASE_URL = 'https://birdwatchers-c872a1ce9f02.herokuapp.com';
 
 // The user can view sightings in two ways: map view or list view
 type ViewMode = 'map' | 'list';
@@ -120,7 +23,7 @@ export default function MapScreen() {
   // Get safe area insets so content doesn't go under the notch/status bar
   const insets = useSafeAreaInsets();
   
-  // State variables to keep track of what the user is doing
+   // State variables to keep track of what the user is doing
   const [viewMode, setViewMode] = useState<ViewMode>('map'); // Start with map view
   const [searchQuery, setSearchQuery] = useState(''); // What the user typed in search
   const [showFilters, setShowFilters] = useState(false); // Whether filter modal is open
@@ -128,15 +31,64 @@ export default function MapScreen() {
   const [radius, setRadius] = useState(6); // Search radius in miles
   const [selectedSpecies, setSelectedSpecies] = useState<string | null>(null); // Selected species filter
 
-  // Filter out sightings that don't have valid coordinates
-  // useMemo makes sure we only recalculate this if MOCK_SIGHTINGS changes
-  const allSightings = useMemo(
-    () =>
-      MOCK_SIGHTINGS.filter(
-        (s) => s.latitude !== 0 && s.longitude !== 0 && s.latitude != null && s.longitude != null
-      ),
-    []
+  const [allSightings, setAllSightings] = useState<Sighting[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      const fetchSightings = async () => {
+        try {
+          setLoading(true);
+          setError(null);
+
+          const response = await fetch(`${API_BASE_URL}/api/sightings/recent`);
+
+          const contentType = response.headers.get('content-type') ?? '';
+          const text = await response.text();
+
+          console.log('Sightings raw response status:', response.status);
+          console.log('Sightings raw response content-type:', contentType);
+
+          if (!response.ok) {
+            throw new Error(`HTTP error ${response.status}`);
+          }
+
+          if (!contentType.includes('application/json')) {
+            throw new Error(`Expected JSON, got content-type: ${contentType}`);
+          }
+
+          const data: ApiSightingResponse[] = JSON.parse(text);
+
+          const mapped = data.map((s) => ({
+            id: s.id,
+            species: s.birdName,
+            count: s.count,
+            location: s.location,
+            latitude: s.latitude,
+            longitude: s.longitude,
+            notes: s.notes ?? '',
+            date: s.observedAt,
+            userId: s.userId,
+            username: s.username ?? undefined,
+          }));
+
+          setAllSightings(mapped);
+        } catch (err) {
+          console.error('Failed to fetch sightings', err);
+          setError('Unable to load sightings.');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchSightings();
+
+      // cleanup (optional)
+      return () => {};
+    }, [])
   );
+
 
   // Filter sightings based on search query and selected species
   // This runs whenever allSightings, searchQuery, or selectedSpecies changes
@@ -209,6 +161,23 @@ export default function MapScreen() {
       </TouchableOpacity>
     );
   };
+
+    if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  if (error && allSightings.length === 0) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ThemedText>{error}</ThemedText>
+      </View>
+    );
+  }
+
 
   return (
     <View style={styles.container}>
