@@ -51,7 +51,7 @@ export default function LoginScreen() {
       const email   = params.email as string | undefined;
       const name    = params.name as string | undefined;
       const picture = params.picture as string | undefined;
-      const token   = params.token as string | undefined; // optional: if you add it later
+      const token   = params.token as string | undefined; 
       const provider = (params.provider as string | undefined) ?? 'google';
 
       if (userId && email) {
